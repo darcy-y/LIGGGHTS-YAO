@@ -65,10 +65,11 @@ namespace ContactModels
       registry.connect("coeffRollFrict", coeffRollFrict,"rolling_model epsd");
       registry.connect("coeffRollVisc", coeffRollVisc,"rolling_model epsd");
 
+      //modified YAO - uncomment CG check
       //NP modified C.K.
       // error checks on coarsegraining
-      if(force->cg_active())
-        error->cg(FLERR,"rolling model epsd");
+      // if(force->cg_active())
+        // error->cg(FLERR,"rolling model epsd");
     }
 
     void collision(CollisionData & cdata, ForceData & i_forces, ForceData & j_forces) //NP modified C.K.

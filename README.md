@@ -1,3 +1,16 @@
+# Changes
+
+---
+
+- uncomment some CG check in files:
+    - `cohesion_model_sjkr.h`
+    - `cohesion_model_sjkr2.h`
+    - `rolling_model_epsd.h`
+    - `rolling_model_epsd2.h`
+
+> Below is original content.
+---
+
 # LIGGGHTS
 
 LIGGGHTS® - LAMMPS Improved for General Granular and Granular Heat Transfer Simulations - is a discrete element method (DEM) particle simulation software.

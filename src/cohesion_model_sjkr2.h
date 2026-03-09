@@ -55,10 +55,11 @@ namespace ContactModels {
       registry.registerProperty("cohEnergyDens", &MODEL_PARAMS::createCohesionEnergyDensity);
       registry.connect("cohEnergyDens", cohEnergyDens,"cohesion_model sjkr2");
 
+      //modified YAO - uncomment CG check
       //NP modified C.K.
       // error checks on coarsegraining
-      if(force->cg_active())
-        error->cg(FLERR,"cohesion model sjkr2");
+      //if(force->cg_active())
+      //  error->cg(FLERR,"cohesion model sjkr2");
     }
 
     void collision(CollisionData & cdata, ForceData & i_forces, ForceData & j_forces) //NP modified C.K.

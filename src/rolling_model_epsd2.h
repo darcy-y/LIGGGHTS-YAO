@@ -60,10 +60,11 @@ namespace ContactModels
       registry.registerProperty("coeffRollFrict", &MODEL_PARAMS::createCoeffRollFrict);
       registry.connect("coeffRollFrict", coeffRollFrict,"rolling_model epsd2");
 
+      //modified YAO - uncomment CG check
       //NP modified C.K.
       // error checks on coarsegraining
-      if(force->cg_active())
-        error->cg(FLERR,"rolling model epsd2");
+      // if(force->cg_active())
+        // error->cg(FLERR,"rolling model epsd2");
     }
 
     void collision(CollisionData & cdata, ForceData & i_forces, ForceData & j_forces) //NP modified C.K.
