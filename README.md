@@ -5,6 +5,7 @@
 - uncomment some CG check in files:
     - `cohesion_model_sjkr.h`
     - `cohesion_model_sjkr2.h`
+    - `rolling_model_cdt.h`
     - `rolling_model_epsd.h`
     - `rolling_model_epsd2.h`
 
