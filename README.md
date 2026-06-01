@@ -8,6 +8,7 @@
     - `rolling_model_cdt.h`
     - `rolling_model_epsd.h`
     - `rolling_model_epsd2.h`
+    - `normal_model_jkr`
 
 > Below is original content.
 ---
