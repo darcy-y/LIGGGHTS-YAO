@@ -105,8 +105,8 @@ namespace ContactModels
 
       //NP modified C.K.
       // error checks on coarsegraining
-      if(force->cg_active())
-        error->cg(FLERR,"model jkr");
+      //if(force->cg_active())
+      //  error->cg(FLERR,"model jkr");
     }
 
     // effective exponent for stress-strain relationship
