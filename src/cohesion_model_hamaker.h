@@ -105,8 +105,8 @@ namespace ContactModels {
 
       //NP modified C.K.
       // error checks on coarsegraining
-      if(force->cg_active())
-        error->cg(FLERR,"cohesion model hamaker");
+      // if(force->cg_active())
+        // error->cg(FLERR,"cohesion model hamaker");
     }
 
     void collision(CollisionData & cdata, ForceData & i_forces, ForceData & j_forces) //NP modified C.K.

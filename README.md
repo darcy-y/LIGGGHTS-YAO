@@ -10,6 +10,13 @@
     - `rolling_model_epsd2.h`
     - `normal_model_jkr`
 
+- Comment out coarse-graining error checks in:
+    - `cohesion_model_hamaker.h`
+    - `normal_model_hooke_stiffness.h`
+    - `normal_model_hooke.h`
+
+  These models no longer stop through `error->cg(...)` when coarse-graining is active. This change only disables the compatibility check; it does not guarantee coarse-graining consistency of the model physics.
+
 > Below is original content.
 ---
 
@@ -100,4 +107,3 @@ liggghts -in in.chute_wear
 - Copyright © 2009-     JKU Linz
 - Copyright © 2012-2015 DCS Computing GmbH, Linz
 - Copyright © 2003      Sandia Corporation. Under the terms of Contract DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government retains certain rights in this software.
-
