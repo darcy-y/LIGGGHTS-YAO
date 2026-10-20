@@ -25,10 +25,10 @@
    Richard Berger (JKU Linz)
 ------------------------------------------------------------------------- */
 #ifdef NORMAL_MODEL
-NORMAL_MODEL(HOOKE_HYSTERESIS,hooke/hysteresis,2)
+NORMAL_MODEL(LUDING,luding,10)
 #else
-#ifndef NORMAL_MODEL_HOOKE_HYSTERESIS_H_
-#define NORMAL_MODEL_HOOKE_HYSTERESIS_H_
+#ifndef NORMAL_MODEL_LUDING_H_
+#define NORMAL_MODEL_LUDING_H_
 #include "contact_models.h"
 #include <math.h>
 #include "atom.h"
@@ -40,7 +40,7 @@ namespace LIGGGHTS {
 namespace ContactModels
 {
   template<>
-  class NormalModel<HOOKE_HYSTERESIS> : protected NormalModel<HOOKE>
+  class NormalModel<LUDING> : protected NormalModel<HOOKE>
   {
   public:
     static const int MASK = CM_REGISTER_SETTINGS | CM_CONNECT_TO_PROPERTIES | CM_COLLISION | CM_NO_COLLISION;
@@ -51,7 +51,7 @@ namespace ContactModels
         phiF(NULL)
     {
       history_offset = hsetup->add_history_value("deltaMax", "0");
-      /*NL*/ if(Pointers::comm->me == 0 && Pointers::screen) fprintf(Pointers::screen, "HOOKE/HYSTERESIS loaded\n");
+      /*NL*/ if(Pointers::comm->me == 0 && Pointers::screen) fprintf(Pointers::screen, "LUDING loaded\n");
     }
 
     inline void registerSettings(Settings & settings){
@@ -65,14 +65,14 @@ namespace ContactModels
       registry.registerProperty("kn2kc", &MODEL_PARAMS::createCoeffAdhesionStiffness);
       registry.registerProperty("phiF", &MODEL_PARAMS::createCoeffPlasticityDepth);
 
-      registry.connect("kn2kcMax", kn2k2Max,"model hooke/hysteresis");
-      registry.connect("kn2kc", kn2kc,"model hooke/hysteresis");
-      registry.connect("phiF", phiF,"model hooke/hysteresis");
+      registry.connect("kn2kcMax", kn2k2Max,"model luding");
+      registry.connect("kn2kc", kn2kc,"model luding");
+      registry.connect("phiF", phiF,"model luding");
 
       //NP modified C.K.
       // error checks on coarsegraining
       if(force->cg_active())
-        error->cg(FLERR,"model hooke/hysteresis");
+        error->cg(FLERR,"model luding");
     }
 
     // effective exponent for stress-strain relationship
@@ -260,5 +260,5 @@ namespace ContactModels
   };
 }
 }
-#endif // NORMAL_MODEL_HOOKE_HYSTERESIS_H_
+#endif // NORMAL_MODEL_LUDING_H_
 #endif
