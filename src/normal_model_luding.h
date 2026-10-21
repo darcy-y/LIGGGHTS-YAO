@@ -51,8 +51,7 @@ namespace ContactModels
         coeffRestLog(NULL),
         ktToKn(1.0), tangential_damping(false), fixedK2(false)
     {
-      deltaMax_offset = hsetup->add_history_value("deltaMax", "0");
-      deltaP_offset = hsetup->add_history_value("deltaP", "0");
+      history_offset = hsetup->add_history_value("deltaMax", "0");
 
       if(comm->me == 0 && screen) fprintf(screen, "LUDING loaded\n");
     }
@@ -95,120 +94,137 @@ namespace ContactModels
 
     inline void collision(CollisionData & cdata, ForceData & i_forces, ForceData & j_forces)
     {
-      // Contact geometry and material properties for this particle/type pair.
-      // Effective radius is ri*rj/(ri+rj) for spheres and ri for a plane wall.
       const int itype = cdata.itype;
       const int jtype = cdata.jtype;
       const double deltan = cdata.deltan;
-      double ri = cdata.radi;
-      double rj = cdata.radj;
-      double reff = cdata.is_wall ? cdata.radi : (ri * rj / (ri + rj));
-
-#ifdef SUPERQUADRIC_ACTIVE_FLAG
-      if(cdata.is_non_spherical && atom->superquadric_flag)
-        reff = cdata.reff;
-#endif
-
-      double meff = cdata.meff;
+      const double meff = cdata.meff;
       const double k1_now = k1[itype][jtype];
       const double k2Max_now = k2Max[itype][jtype];
       const double kc_now = kc[itype][jtype];
       const double F0_now = F0[itype][jtype];
 
-      // Contact history: deltaMax never decreases during an active contact;
-      // deltaP is the zero-force intercept of the unloading line before F0.
+      // Equivalent overlap history: adhesion can reduce it; it is not a true maximum.
       if(cdata.touch) *cdata.touch |= TOUCH_NORMAL_MODEL;
-      double & deltaMax = cdata.contact_history[deltaMax_offset];
-      double & deltaP = cdata.contact_history[deltaP_offset];
-
+      double & deltaMax = cdata.contact_history[history_offset];
       const bool newMaximum = (deltan > deltaMax);
       if(newMaximum)
         deltaMax = deltan;
 
-      // Unloading stiffness: constant k2Max or linear hardening from k1 to k2Max.
-      // phiF sets the overlap scale at which hardening saturates.
-      double k2_now;
+      double fBase;
+      double kn_current;
       if(fixedK2) {
-        k2_now = k2Max_now;
+        // Constant-k2 fast path: no effective radius, phiF or hardening calculation.
+        const double k2_now = k2Max_now;
+        const double dk = k2_now - k1_now;
+        const double fLoad = k1_now * deltan;
+        const double fAdhesion = -kc_now * deltan;
+        const double fTmp = k2_now * deltan - dk * deltaMax;
+
+        if(newMaximum) {
+          // Explicit loading avoids round-off switching the damping branch.
+          fBase = fLoad;
+          kn_current = k1_now;
+        } else if(fTmp >= fLoad) {
+          // Reloading has reached the virgin loading envelope.
+          fBase = fLoad;
+          kn_current = k1_now;
+        } else if(fTmp > fAdhesion) {
+          // Elastic unloading/reloading between the two force bounds.
+          fBase = fTmp;
+          kn_current = k2_now;
+        } else {
+          fBase = fAdhesion;
+          kn_current = kc_now;
+
+          // Anchor the equivalent unloading line to adhesion without a square root.
+          // k2*delta - (k2-k1)*deltaMax_new = -kc*delta.
+          deltaMax = (k2_now + kc_now) / dk * deltan;
+        }
       } else {
-        const double phiF_now = phiF[itype][jtype];
+        // Variable-k2 Luding: geometry determines the plastic-depth saturation scale.
+        double reff;
+        if(cdata.is_wall) {
+          reff = cdata.radi;
+        } else {
+          const double ri = cdata.radi;
+          const double rj = cdata.radj;
+          reff = ri * rj / (ri + rj);
+        }
+#ifdef SUPERQUADRIC_ACTIVE_FLAG
+        if(cdata.is_non_spherical && atom->superquadric_flag)
+          reff = cdata.reff;
+#endif
         const double deltaMaxLim = k2Max_now / (k2Max_now - k1_now) *
-                                   phiF_now * 2.0 * reff;
+                                   phiF[itype][jtype] * 2.0 * reff;
 
         if(deltaMax >= deltaMaxLim) {
-          k2_now = k2Max_now;
+          // Saturated hard core: the intercept is fixed at deltaMaxLim.
+          // Further compression follows k2Max, not the virgin k1 envelope.
+          const double k2_now = k2Max_now;
+          const double fAdhesion = -kc_now * deltan;
+          const double fTmp = k2_now * deltan -
+                              (k2_now - k1_now) * deltaMaxLim;
+
+          if(fTmp >= fAdhesion) {
+            fBase = fTmp;
+            kn_current = k2_now;
+          } else {
+            fBase = fAdhesion;
+            kn_current = kc_now;
+
+            // Equivalent-history update can return the contact to unsaturated hardening.
+            deltaMax = 0.5 * (deltan + sqrt(deltan * deltan +
+                4.0 * (k1_now + kc_now) * deltan * deltaMaxLim /
+                (k2Max_now - k1_now)));
+          }
         } else {
-          k2_now = k1_now + (k2Max_now - k1_now) * deltaMax / deltaMaxLim;
+          // Unsaturated elastoplastic region: k2 grows with equivalent history.
+          const double k2_now = k1_now +
+              (k2Max_now - k1_now) * deltaMax / deltaMaxLim;
+          const double fLoad = k1_now * deltan;
+          const double fAdhesion = -kc_now * deltan;
+          const double fTmp = k2_now * (deltan - deltaMax) + k1_now * deltaMax;
+
+          if(newMaximum) {
+            // Explicit loading prevents k1/k2 damping jitter at equal force lines.
+            fBase = fLoad;
+            kn_current = k1_now;
+          } else if(fTmp >= fLoad) {
+            fBase = fLoad;
+            kn_current = k1_now;
+          } else if(fTmp > fAdhesion) {
+            fBase = fTmp;
+            kn_current = k2_now;
+          } else {
+            fBase = fAdhesion;
+            kn_current = kc_now;
+
+            // Solve for the equivalent history whose unloading line meets adhesion.
+            deltaMax = 0.5 * (deltan + sqrt(deltan * deltan +
+                4.0 * (k1_now + kc_now) * deltan * deltaMaxLim /
+                (k2Max_now - k1_now)));
+          }
         }
       }
 
-      // Keep the unloading line through the new loading point: k2*(delta-deltaP)=k1*delta.
-      if(newMaximum) {
-        deltaP = (1.0 - k1_now / k2_now) * deltaMax;
-      }
-
-      // Three force branches before applying the common attractive F0 offset.
-      const double fLoad = k1_now * deltan;
-      double fUnload = k2_now * (deltan - deltaP);
-      const double fAdhesion = -kc_now * deltan;
-
-      // Reloading from adhesion: vn < 0 means increasing overlap. Move deltaP
-      // so the new unloading/reloading line passes through -kc*delta continuously.
-      bool reloadFromAdhesion = false;
-      if(!newMaximum && cdata.vn < 0.0 && fUnload <= fAdhesion) {
-        deltaP = deltan * (1.0 + kc_now / k2_now);
-        fUnload = k2_now * (deltan - deltaP);
-        reloadFromAdhesion = true;
-      }
-
-      // Select the loading envelope, unloading/reloading line, or adhesion bound.
-      double fBase;
-      double kn_current;
-      if(newMaximum) {
-        // Virgin loading beyond the historical maximum always follows k1.
-        // Avoid round-off switching damping branches when fUnload == fLoad.
-        fBase = fLoad;
-        kn_current = k1_now;
-      } else if(fUnload >= fLoad) {
-        // Reloading has reached the loading envelope.
-        fBase = fLoad;
-        kn_current = k1_now;
-      } else if(fUnload > fAdhesion || reloadFromAdhesion) {
-        // Follow k2 between the loading envelope and adhesion bound.
-        fBase = fUnload;
-        kn_current = k2_now;
-      } else {
-        // Attractive branch: force decreases as overlap increases.
-        fBase = fAdhesion;
-        kn_current = kc_now;
-      }
-
-      // F0 is a positive attraction magnitude applied to every branch.
+      // F0 is a positive attraction magnitude applied to every force branch.
       const double FL = fBase - F0_now;
 
-      // Friction/rolling uses Fref = max(FL + F0 + kc*delta, 0).
-      // It excludes damping and vanishes on adhesion (FL = -kc*delta-F0).
-      double Fref = FL + F0_now + kc_now * deltan;
+      // Friction/rolling excludes damping: FL + F0 + kc*delta = fBase + kc*delta.
+      // This reference vanishes on the adhesion branch.
+      double Fref = fBase + kc_now * deltan;
       if(Fref < 0.0)
         Fref = 0.0;
 
-      // Tangential stiffness remains ktToKn*k1, independent of the normal branch.
+      // Tangential stiffness remains fixed; normal damping follows the active branch.
       const double kt = ktToKn * k1_now;
-
-      // Dashpots use ln(e): normal damping follows k1/k2/kc of the active branch;
-      // optional tangential damping uses kt. Setting e=1 removes both dashpots.
-      const double coeffRestLogChosen = coeffRestLog[itype][jtype];
-      const double coeffRestLogChosenSq = coeffRestLogChosen * coeffRestLogChosen;
-      const double gamman =
-          sqrt(4.0 * meff * kn_current * coeffRestLogChosenSq /
-               (coeffRestLogChosenSq + M_PI * M_PI));
+      const double loge = coeffRestLog[itype][jtype];
+      const double loge2 = loge * loge;
+      const double dampingFactor = 4.0 * loge2 / (loge2 + M_PI * M_PI);
+      const double gamman = sqrt(meff * kn_current * dampingFactor);
       const double gammat = tangential_damping ?
-          sqrt(4.0 * meff * kt * coeffRestLogChosenSq /
-               (coeffRestLogChosenSq + M_PI * M_PI)) : 0.0;
-
-      // Actual normal force includes the attractive offset and velocity damping.
-      const double Fn_damping = -gamman * cdata.vn;
-      const double Fn = FL + Fn_damping;
+          sqrt(meff * kt * dampingFactor) : 0.0;
+      const double Fn = FL - gamman * cdata.vn;
 
       // cdata.Fn is the friction reference; dynamics below uses actual Fn.
       cdata.Fn = Fref;
@@ -274,8 +290,7 @@ namespace ContactModels
     {
       // Separation ends this contact; a future contact starts with fresh history.
       if(cdata.touch) *cdata.touch &= ~TOUCH_NORMAL_MODEL;
-      cdata.contact_history[deltaMax_offset] = 0.0;
-      cdata.contact_history[deltaP_offset] = 0.0;
+      cdata.contact_history[history_offset] = 0.0;
     }
 
     void beginPass(CollisionData&, ForceData&, ForceData&){}
@@ -293,8 +308,7 @@ namespace ContactModels
     bool tangential_damping;
     bool fixedK2;
 
-    int deltaMax_offset;
-    int deltaP_offset;
+    int history_offset;
   };
 }
 }
