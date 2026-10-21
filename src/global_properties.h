@@ -80,6 +80,13 @@ namespace MODEL_PARAMS
   MatrixProperty* createCoeffAdhesionStiffness(PropertyRegistry & registry, const char * caller, bool sanity_checks);
   MatrixProperty* createCoeffPlasticityDepth(PropertyRegistry & registry, const char * caller, bool sanity_checks);
 
+  // Luding model
+  MatrixProperty* createLudingK1(PropertyRegistry & registry, const char * caller, bool sanity_checks);
+  MatrixProperty* createLudingK2Max(PropertyRegistry & registry, const char * caller, bool sanity_checks);
+  MatrixProperty* createLudingKc(PropertyRegistry & registry, const char * caller, bool sanity_checks);
+  MatrixProperty* createLudingF0(PropertyRegistry & registry, const char * caller, bool sanity_checks);
+  MatrixProperty* createLudingPhiF(PropertyRegistry & registry, const char * caller, bool sanity_checks);
+
   VectorProperty* createSurfaceRoughness(PropertyRegistry & registry, const char * caller, bool sanity_checks);
   MatrixProperty* createHminSigma(PropertyRegistry & registry, const char * caller, bool sanity_checks);
   MatrixProperty* createCoeffFrictLub(PropertyRegistry & registry, const char * caller, bool sanity_checks);

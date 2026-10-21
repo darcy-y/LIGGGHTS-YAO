@@ -671,6 +671,41 @@ namespace MODEL_PARAMS
 
   /* ---------------------------------------------------------------------- */
 
+  MatrixProperty* createLudingK1(PropertyRegistry & registry, const char * caller, bool)
+  {
+    return createPerTypePairProperty(registry, "k1", caller);
+  }
+
+  /* ---------------------------------------------------------------------- */
+
+  MatrixProperty* createLudingK2Max(PropertyRegistry & registry, const char * caller, bool)
+  {
+    return createPerTypePairProperty(registry, "k2Max", caller);
+  }
+
+  /* ---------------------------------------------------------------------- */
+
+  MatrixProperty* createLudingKc(PropertyRegistry & registry, const char * caller, bool)
+  {
+    return createPerTypePairProperty(registry, "kc", caller);
+  }
+
+  /* ---------------------------------------------------------------------- */
+
+  MatrixProperty* createLudingF0(PropertyRegistry & registry, const char * caller, bool)
+  {
+    return createPerTypePairProperty(registry, "F0", caller);
+  }
+
+  /* ---------------------------------------------------------------------- */
+
+  MatrixProperty* createLudingPhiF(PropertyRegistry & registry, const char * caller, bool)
+  {
+    return createPerTypePairProperty(registry, "phiF", caller);
+  }
+
+  /* ---------------------------------------------------------------------- */
+
   VectorProperty * createSurfaceRoughness(PropertyRegistry & registry, const char * caller, bool)
   {
     const int max_type = registry.max_type();

@@ -46,6 +46,10 @@ namespace ContactModels
     static const int MASK = CM_REGISTER_SETTINGS | CM_CONNECT_TO_PROPERTIES | CM_COLLISION | CM_NO_COLLISION;
 
     NormalModel(LAMMPS * lmp, IContactHistorySetup * hsetup) : NormalModel<HOOKE>(lmp, hsetup),
+        k1(NULL),
+        k2Max(NULL),
+        kc(NULL),
+        F0(NULL),
         kn2k2Max(NULL),
         kn2kc(NULL),
         phiF(NULL)
@@ -61,13 +65,26 @@ namespace ContactModels
     inline void connectToProperties(PropertyRegistry & registry) {
       NormalModel<HOOKE>::connectToProperties(registry);
 
-      registry.registerProperty("kn2kcMax", &MODEL_PARAMS::createCoeffMaxElasticStiffness);
-      registry.registerProperty("kn2kc", &MODEL_PARAMS::createCoeffAdhesionStiffness);
-      registry.registerProperty("phiF", &MODEL_PARAMS::createCoeffPlasticityDepth);
+      // New Luding parameters: direct input
+      registry.registerProperty("k1",    &MODEL_PARAMS::createLudingK1);
+      registry.registerProperty("k2Max", &MODEL_PARAMS::createLudingK2Max);
+      registry.registerProperty("kc",    &MODEL_PARAMS::createLudingKc);
+      registry.registerProperty("F0",    &MODEL_PARAMS::createLudingF0);
+      registry.registerProperty("phiF",  &MODEL_PARAMS::createLudingPhiF);
 
-      registry.connect("kn2kcMax", kn2k2Max,"model luding");
-      registry.connect("kn2kc", kn2kc,"model luding");
-      registry.connect("phiF", phiF,"model luding");
+      registry.connect("k1",    k1,    "model luding");
+      registry.connect("k2Max", k2Max, "model luding");
+      registry.connect("kc",    kc,    "model luding");
+      registry.connect("F0",    F0,    "model luding");
+      registry.connect("phiF",  phiF,  "model luding");
+
+      // Old parameters temporarily retained because the force formula
+      // still uses them at this stage
+      registry.registerProperty("kn2kcMax", &MODEL_PARAMS::createCoeffMaxElasticStiffness);
+      registry.registerProperty("kn2kc",    &MODEL_PARAMS::createCoeffAdhesionStiffness);
+
+      registry.connect("kn2kcMax", kn2k2Max, "model luding");
+      registry.connect("kn2kc",    kn2kc,    "model luding");
 
       //NP modified C.K.
       // error checks on coarsegraining
@@ -253,9 +270,17 @@ namespace ContactModels
     void endPass(CollisionData&, ForceData&, ForceData&){}
 
   protected:
+    // New Luding parameters
+    double **k1;
+    double **k2Max;
+    double **kc;
+    double **F0;
+
     double **kn2k2Max;
     double **kn2kc;
+    
     double **phiF;
+    
     int history_offset;
   };
 }
